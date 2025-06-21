@@ -1,14 +1,45 @@
+import os
+import threading
+from flask import Flask
 import telebot
 from telebot import types
-import re
-import time
-import uuid
-import threading
-import json
-import os
-from datetime import datetime
 import pytz
-import logging
+import json
+import uuid
+import time
+import re
+from datetime import datetime
+
+# ✅ BOT CONFIG
+BOT_TOKEN = os.getenv('7999151899:AAFnMohiNBtlCdOv6OQ_9wvJTWPu_dBkWJ0')
+ADMIN_ID = int(os.getenv('7929115529'))
+
+bot = telebot.TeleBot(BOT_TOKEN)
+
+# ✅ Basic command handler
+@bot.message_handler(commands=['start'])
+def start_command(message):
+    bot.send_message(message.chat.id, "🤖 Bot is running on Render!")
+
+# ✅ Flask app to keep bot alive
+app = Flask(name)
+
+@app.route('/')
+def home():
+    return "Bot is running on Render!"
+
+# ✅ Run polling in a thread (ONLY here)
+def run_bot():
+    print("✅ Bot is polling now...")
+    bot.infinity_polling()  # 🔁 Use infinity_polling instead of polling() to avoid threading conflict
+
+if name == 'main':
+    # ✅ Only run polling here
+    threading.Thread(target=run_bot).start()
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
+
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
