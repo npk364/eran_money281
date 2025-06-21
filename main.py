@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # ✅ BOT CONFIG - Use environment variables for security
-BOT_TOKEN = os.getenv('BOT_TOKEN', '7999151899:AAEej0JnxG8pgAHvwjzXfSKDSeNdvz8NkO8')
+BOT_TOKEN = os.getenv('BOT_TOKEN', '7999151899:AAGBnPzSCbb0FWtICFo19T_4-eoVBapUqZg')
 ADMIN_ID = int(os.getenv('ADMIN_ID', '7929115529'))
 
 try:
