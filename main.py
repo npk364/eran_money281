@@ -1,45 +1,15 @@
-import os
-import threading
-from flask import Flask
+
 import telebot
 from telebot import types
-import pytz
-import json
-import uuid
-import time
 import re
+import time
+import uuid
+import threading
+import json
+import os
 from datetime import datetime
-
-# ✅ BOT CONFIG
-BOT_TOKEN = os.getenv('7999151899:AAFnMohiNBtlCdOv6OQ_9wvJTWPu_dBkWJ0')
-ADMIN_ID = int(os.getenv('7929115529'))
-
-bot = telebot.TeleBot(BOT_TOKEN)
-
-# ✅ Basic command handler
-@bot.message_handler(commands=['start'])
-def start_command(message):
-    bot.send_message(message.chat.id, "🤖 Bot is running on Render!")
-
-# ✅ Flask app to keep bot alive
-app = Flask(name)
-
-@app.route('/')
-def home():
-    return "Bot is running on Render!"
-
-# ✅ Run polling in a thread (ONLY here)
-def run_bot():
-    print("✅ Bot is polling now...")
-    bot.infinity_polling()  # 🔁 Use infinity_polling instead of polling() to avoid threading conflict
-
-if name == 'main':
-    # ✅ Only run polling here
-    threading.Thread(target=run_bot).start()
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
-
-
+import pytz
+import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -101,7 +71,7 @@ def load_data():
         'withdrawal_requests': {},
         'task_tracking': {}
     }
-
+    
     try:
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, 'r', encoding='utf-8') as f:
@@ -204,7 +174,7 @@ def save_data():
                 os.remove(temp_file)
             except:
                 pass
-
+        
         # Try to restore from backup if save fails
         if os.path.exists(BACKUP_FILE):
             try:
@@ -218,7 +188,7 @@ def save_data():
 # Load initial data
 try:
     initial_data = load_data()
-
+    
     # Safe data conversion with error handling
     user_balances = {}
     for k, v in initial_data.get('user_balances', {}).items():
@@ -226,50 +196,50 @@ try:
             user_balances[int(k)] = float(v)
         except (ValueError, TypeError) as e:
             logger.warning(f"Invalid user balance data: {k}={v}, error: {e}")
-
+    
     worked_users = initial_data.get('worked_users', {})
     pending_tasks = initial_data.get('pending_tasks', {})
-
+    
     referral_data = {}
     for k, v in initial_data.get('referral_data', {}).items():
         try:
             referral_data[int(k)] = int(v)
         except (ValueError, TypeError) as e:
             logger.warning(f"Invalid referral data: {k}={v}, error: {e}")
-
+    
     banned_users = set()
     for x in initial_data.get('banned_users', []):
         try:
             banned_users.add(int(x))
         except (ValueError, TypeError) as e:
             logger.warning(f"Invalid banned user ID: {x}, error: {e}")
-
+    
     completed_tasks = {}
     for k, v in initial_data.get('completed_tasks', {}).items():
         try:
             completed_tasks[int(k)] = set(v) if isinstance(v, list) else v
         except (ValueError, TypeError) as e:
             logger.warning(f"Invalid completed task data: {k}={v}, error: {e}")
-
+    
     task_sections = initial_data.get('task_sections', {
         'watch_ads': [],
         'app_downloads': [],
         'promotional': []
     })
-
+    
     # Ensure all required sections exist
     for section in ['watch_ads', 'app_downloads', 'promotional']:
         if section not in task_sections:
             task_sections[section] = []
-
+    
     client_tasks = initial_data.get('client_tasks', {})
     client_referrals = initial_data.get('client_referrals', {})
     client_id_counter = initial_data.get('client_id_counter', 1)
     withdrawal_requests = initial_data.get('withdrawal_requests', {})
     task_tracking = initial_data.get('task_tracking', {})
-
+    
     logger.info("Data initialization completed successfully")
-
+    
 except Exception as e:
     logger.error(f"Critical error during data initialization: {e}")
     # Initialize with defaults
@@ -372,15 +342,15 @@ def process_referral(new_user_id, referrer_id):
                 user_balances[referrer_id] = user_balances.get(referrer_id, 0) + 5.0
                 user_balances[new_user_id] = user_balances.get(new_user_id, 0) + 5.0
                 referral_data[new_user_id] = referrer_id
-
+            
             if save_data():
                 logger.info(f"💰 Referral bonus added - Referrer: {referrer_id}, New User: {new_user_id}")
-
+                
                 try:
                     bot.send_message(referrer_id, "🎉 Referral successful! ₹5.00 added to your balance.")
                 except Exception as msg_error:
                     logger.warning(f"Failed to notify referrer {referrer_id}: {msg_error}")
-
+                
                 try:
                     bot.send_message(new_user_id, "🎉 Welcome bonus! ₹5.00 added to your balance.")
                 except Exception as msg_error:
@@ -458,7 +428,7 @@ def process_task_tracking(new_user_id, task_id, task_type, section):
 
         # Check if user already tracked this specific task
         existing_user = any(track['user_id'] == new_user_id for track in task_tracking[task_id])
-
+        
         user_info = {
             'user_id': new_user_id,
             'username': username,
@@ -476,13 +446,13 @@ def process_task_tracking(new_user_id, task_id, task_type, section):
 
             try:
                 section_name = section.replace('_', ' ').title()
-
+                
                 # Get task details if available
                 task_details = "Unknown Task"
                 if section in task_sections and len(task_sections[section]) > int(task_id.split('_')[1]):
                     task_index = int(task_id.split('_')[1])
                     task_details = task_sections[section][task_index][:50] + "..."
-
+                
                 notification = f"🚨 **ENHANCED TASK TRACKING ALERT!**\n\n"
                 notification += f"👤 **User:** {user_info['first_name']} (@{user_info['username']})\n"
                 notification += f"🆔 **User ID:** {new_user_id}\n"
@@ -497,16 +467,16 @@ def process_task_tracking(new_user_id, task_id, task_type, section):
                 notification += f"🔍 **Next:** Monitor for task completion submission"
 
                 bot.send_message(ADMIN_ID, notification, parse_mode="Markdown")
-
+                
                 # Send confirmation to user
                 bot.send_message(new_user_id, f"✅ **Tracking Confirmed!**\n\n🎯 Your activity has been recorded\n📱 Section: {section_name}\n⚡ Status: Verified\n\n💡 Continue with the task to earn rewards!", parse_mode="Markdown")
-
+                
             except Exception as e:
                 print(f"Error sending tracking notification: {e}")
         else:
             # User already tracked - send different notification
             bot.send_message(new_user_id, f"🔄 **Already Tracked!**\n\n📱 You've already engaged with this task\n🎯 Section: {section.replace('_', ' ').title()}\n\n💡 Complete the task to earn rewards!", parse_mode="Markdown")
-
+            
     except Exception as e:
         print(f"Error in task tracking processing: {e}")
 
@@ -806,21 +776,21 @@ def send_welcome(message):
                     'appdownload': 'app_downloads', 
                     'promo': 'promotional'
                 }
-
+                
                 real_section = section_mapping.get(section, section)
-
+                
                 if real_section in task_sections:
                     if 0 <= task_index < len(task_sections[real_section]):
                         task_id = f"{real_section}_{task_index}"
                         process_task_tracking(user_id, task_id, task_type, real_section)
 
                         section_name = real_section.replace('_', ' ').title()
-
+                        
                         # Get task name for better tracking
                         task_name = "Unknown Task"
                         if task_index < len(task_sections[real_section]):
                             task_name = task_sections[real_section][task_index][:50]
-
+                        
                         bot.send_message(
                             user_id,
                             f"🎯 **{section_name} Task Tracking Completed!**\n\n✅ Your activity has been verified!\n📱 Section: {section_name}\n📝 Task: {task_name}...\n🔍 Action: {task_type}\n\n🚨 **Admin has been notified automatically**\n💡 **Next Step:** Complete the task to earn rewards\n\n⚡ **Status:** Real-time tracking active",
@@ -850,11 +820,11 @@ def handle_message(message):
         name = message.from_user.first_name or "Unknown"
         username = message.from_user.username or "No Username"
         text = message.text.strip() if message.text else ""
-
+        
         if not text:
             logger.warning(f"Empty message from user {user_id}")
             return
-
+            
     except Exception as e:
         logger.error(f"Error processing message: {e}")
         return
@@ -1063,18 +1033,18 @@ def handle_message(message):
                         # Get task details
                         section = task_id.split('_')[0] + '_' + task_id.split('_')[1] if '_' in task_id else task_id
                         task_index = int(task_id.split('_')[1]) if '_' in task_id else 0
-
+                        
                         task_name = "Unknown Task"
                         if section in task_sections and task_index < len(task_sections[section]):
                             task_name = task_sections[section][task_index][:100]
-
+                        
                         stats = f"📊 **Enhanced Task Tracking Statistics:**\n\n"
                         stats += f"🎯 **Task ID:** {task_id}\n"
                         stats += f"📝 **Task:** {task_name}...\n"
                         stats += f"📱 **Section:** {section.replace('_', ' ').title()}\n"
                         stats += f"📊 **Total Engagements:** {len(task_tracking[task_id])}\n"
                         stats += f"✅ **Verification:** Real-time tracking\n\n"
-
+                        
                         stats += "👥 **Detailed Activity Log:**\n"
                         for i, track in enumerate(task_tracking[task_id], 1):
                             section_name = track['section'].replace('_', ' ').title()
@@ -1097,15 +1067,15 @@ def handle_message(message):
                 else:
                     if task_tracking:
                         stats = "📊 **Complete Task Tracking Overview:**\n\n"
-
+                        
                         total_engagements = sum(len(tracks) for tracks in task_tracking.values())
                         unique_users = len(set(track['user_id'] for tracks in task_tracking.values() for track in tracks))
-
+                        
                         stats += f"🔍 **Global Statistics:**\n"
                         stats += f"• Total Tasks with Tracking: {len(task_tracking)}\n"
                         stats += f"• Total Engagements: {total_engagements}\n"
                         stats += f"• Unique Users Tracked: {unique_users}\n\n"
-
+                        
                         stats += "📱 **By Section:**\n"
                         section_stats = {}
                         for task_id, tracks in task_tracking.items():
@@ -1113,19 +1083,19 @@ def handle_message(message):
                             if section not in section_stats:
                                 section_stats[section] = 0
                             section_stats[section] += len(tracks)
-
+                        
                         for section, count in section_stats.items():
                             section_name = section.replace('_', ' ').title()
                             stats += f"📱 {section_name}: {count} engagements\n"
-
+                        
                         stats += f"\n🎯 **Task Breakdown:**\n"
                         for task_id, tracks in sorted(task_tracking.items(), key=lambda x: len(x[1]), reverse=True)[:10]:
                             section_name = tracks[0]['section'].replace('_', ' ').title() if tracks else 'Unknown'
                             stats += f"🎯 **{task_id}** ({section_name}): {len(tracks)} engagements\n"
-
+                        
                         if len(task_tracking) > 10:
                             stats += f"... and {len(task_tracking) - 10} more tasks\n"
-
+                            
                         stats += f"\n💡 Use `/taskstats task_id` for detailed analysis"
                         bot.send_message(ADMIN_ID, stats, parse_mode="Markdown")
                     else:
@@ -2852,9 +2822,10 @@ def run_bot():
             logger.error("❌ Failed to save data on shutdown")
     except Exception as e:
         logger.error(f"❌ Error saving data on shutdown: {e}")
-
+    
     logger.info("Bot shutdown completed")
 
 # ✅ RUN BOT
 if __name__ == "__main__":
     run_bot()
+    
